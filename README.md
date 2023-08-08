@@ -53,3 +53,82 @@ and the other matrix is the part of the image covered by the filter.
         keras.layers.Dropout(0.3, seed=2),
         keras.layers.Dense(6, activation='softmax')
     ])
+
+
+For classifiers that work with a large number of classes and which have to make nuanced decisions - scoring by accuracy is simply unfair. 
+I wouldn't say that I don't know what a street or a building are - but the 75% accuracy I got from the images earlier would imply a shaky 
+knowledge of what these are! Accuracy as a metric, is essentially, Top-1 Categorical Accuracy and it's pretty difficult to get that score very high for 
+complex problems. Most of the papers you'll read on complex image classification will have some level of Top-K accuracy besides Top-1 accuracy, 
+depending on the number of classes in the dataset. If it's 1000 classes, like with ImageNet - people commonly also calculate a Top-5 accuracy score 
+besides the Top-1 accuracy score.
+
+    model.compile(loss="categorical_crossentropy",
+                  optimizer=keras.optimizers.Adam(),
+                  metrics=['accuracy',
+                           keras.metrics.TopKCategoricalAccuracy(k=2)])
+
+model.summary()
+
+    `Model: "sequential"
+    _________________________________________________________________
+    Layer (type)                 Output Shape              Param #   
+    =================================================================
+    conv2d (Conv2D)              (None, 150, 150, 64)      1792      
+    _________________________________________________________________
+    conv2d_1 (Conv2D)            (None, 150, 150, 64)      36928     
+    _________________________________________________________________
+    max_pooling2d (MaxPooling2D) (None, 75, 75, 64)        0         
+    _________________________________________________________________
+    conv2d_2 (Conv2D)            (None, 75, 75, 128)       73856     
+    _________________________________________________________________
+    conv2d_3 (Conv2D)            (None, 75, 75, 128)       147584    
+    _________________________________________________________________
+    max_pooling2d_1 (MaxPooling2 (None, 37, 37, 128)       0         
+    _________________________________________________________________
+    conv2d_4 (Conv2D)            (None, 37, 37, 256)       295168    
+    _________________________________________________________________
+    conv2d_5 (Conv2D)            (None, 37, 37, 256)       590080    
+    _________________________________________________________________
+    max_pooling2d_2 (MaxPooling2 (None, 18, 18, 256)       0         
+    _________________________________________________________________
+    flatten (Flatten)            (None, 82944)             0         
+    _________________________________________________________________
+    dense (Dense)                (None, 64)                5308480   
+    _________________________________________________________________
+    batch_normalization (BatchNo (None, 64)                256       
+    _________________________________________________________________
+    dropout (Dropout)            (None, 64)                0         
+    _________________________________________________________________
+    dense_1 (Dense)              (None, 6)                 390       
+    =================================================================
+    Total params: 6,454,534
+    Trainable params: 6,454,406
+    Non-trainable params: 128`
+
+Learning Rate 
+
+So - how do you figure out which learning rate to use? Note that this isn't a question of how you should change the learning rate during training. 
+This refers to the initial learning rate. In the beginning, you want to maximize the change in loss (with a slope pointing to the minimum). 
+This tends to be a higher learning rate, though, you can go too high even here, and make it difficult to reduce it to a more sustainable number. 
+Let's recap, once you start, there are various methods of updating the learning rate during training to optimize 
+the learning process such as linear decay, exponential decay or any other non-linear function to make the decay (reduction) of the learning rate 
+more optimized. Alternatively - you can leave it all to Keras and only update the learning rate if need be, 
+through the ReduceLROnPlateau() callback, which, depending on its patience, will reduce the learning rate only when required. 
+This is a pretty simple rule and it works surprisingly well! Though, it can be outperformed by other techniques as well. 
+Keras offers a LearningRateScheduler class, to which you can pass any function that returns the learning rate, on each epoch, 
+and use that function as your custom learning rate scheduler.
+
+    model_static = build_model()
+    model_static.summary()
+    
+    callbacks = [
+        tf.keras.callbacks.ModelCheckpoint(filepath='intel-classification_staticlr.h5', save_best_only=True),
+        tf.keras.callbacks.ReduceLROnPlateau(),
+    ]
+    
+    history = model_static.fit(train_generator,
+                        validation_data = valid_generator,
+                        callbacks = callbacks,
+                        epochs = 1)
+
+
